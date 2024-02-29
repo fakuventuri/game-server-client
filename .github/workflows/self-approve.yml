@@ -1,0 +1,20 @@
+name: Self-Approve Action
+
+on:
+  pull_request:
+
+jobs:
+  self-approve-action:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Self-Approve Action
+        uses: nicklegan/github-repo-self-approve-action@v1.0.0
+        if: github.actor == 'fakuventuri'
+        with:
+          appid: ${{ secrets.APPID }}
+          privatekey: ${{ secrets.PRIVATEKEY }}
+          installationid: ${{ secrets.INSTALLATIONID }}
