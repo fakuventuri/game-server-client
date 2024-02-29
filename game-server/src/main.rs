@@ -10,7 +10,7 @@ use std::net::ToSocketAddrs;
 const PORT: u16 = 8282;
 
 fn main() {
-    run(
+    run_server(
         Transport::FramedTcp,
         ("0.0.0.0", PORT).to_socket_addrs().unwrap().next().unwrap(),
     )
@@ -20,7 +20,9 @@ struct ClientInfo {
     count: usize,
 }
 
-pub fn run(transport: Transport, addr: SocketAddr) {
+pub fn run_server(transport: Transport, addr: SocketAddr) {
+    println!("Server started");
+
     let (handler, listener) = node::split::<()>();
 
     let mut clients: HashMap<Endpoint, ClientInfo> = HashMap::new();
@@ -28,6 +30,16 @@ pub fn run(transport: Transport, addr: SocketAddr) {
     match handler.network().listen(transport, addr) {
         Ok((_id, real_addr)) => println!("Server running at {} by {}", real_addr, transport),
         Err(_) => return println!("Can not listening at {} by {}", addr, transport),
+    }
+
+    // Handle Ctrl-C to stop server
+    {
+        let stop_handler = handler.clone();
+        ctrlc::set_handler(move || {
+            stop_handler.stop();
+            println!("Server stopped");
+        })
+        .expect("Error setting Ctrl-C handler");
     }
 
     listener.for_each(move |event| match event.network() {

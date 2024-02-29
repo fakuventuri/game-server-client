@@ -8,7 +8,7 @@ use std::time::Duration;
 // const PORT: u16 = 8282;
 
 fn main() {
-    run(
+    run_client(
         Transport::FramedTcp,
         "127.0.0.1:8282".to_remote_addr().unwrap(),
     )
@@ -19,13 +19,25 @@ enum Signal {
            // Other signals here,
 }
 
-pub fn run(transport: Transport, remote_addr: RemoteAddr) {
+pub fn run_client(transport: Transport, remote_addr: RemoteAddr) {
+    println!("Client started");
+
     let (handler, listener) = node::split();
 
     let (server_id, local_addr) = handler
         .network()
         .connect(transport, remote_addr.clone())
         .unwrap();
+
+    // Handle Ctrl-C to stop client
+    {
+        let stop_handler = handler.clone();
+        ctrlc::set_handler(move || {
+            stop_handler.stop();
+            println!("Client stopped");
+        })
+        .expect("Error setting Ctrl-C handler");
+    }
 
     listener.for_each(move |event| match event {
         NodeEvent::Network(net_event) => match net_event {
@@ -42,7 +54,8 @@ pub fn run(transport: Transport, remote_addr: RemoteAddr) {
                     println!(
                         "Can not connect to server at {} by {}",
                         remote_addr, transport
-                    )
+                    );
+                    handler.stop();
                 }
             }
             NetEvent::Accepted(_, _) => unreachable!(), // Only generated when a listener accepts
